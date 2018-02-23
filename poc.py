@@ -69,7 +69,7 @@ while True:
       cv2.putText(frame, emotion, (10, index * 20 + 20), cv2.FONT_HERSHEY_PLAIN, 0.5, (0, 255, 0), 1);
       cv2.rectangle(frame, (130, index * 20 + 10), (130 + int(result[0][index] * 100), (index + 1) * 20 + 4), (255, 0, 0), -1)
 
-    face_image = feelings_faces[result[0].index(max(result[0]))]
+    face_image = feelings_faces[result[0].tolist().index(max(result[0]))]
 
     # Ugly transparent fix
     for c in range(0, 3):
