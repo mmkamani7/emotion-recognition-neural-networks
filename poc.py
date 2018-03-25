@@ -4,6 +4,7 @@ import sys
 from constants import *
 from emotion_recognition import EmotionRecognition
 import numpy as np
+import json
 
 cascade_classifier = cv2.CascadeClassifier(CASC_PATH)
 
@@ -18,8 +19,8 @@ def format_image(image):
     image = cv2.imdecode(image, cv2.CV_LOAD_IMAGE_GRAYSCALE)
   faces = cascade_classifier.detectMultiScale(
       image,
-      scaleFactor = 1.3,
-      minNeighbors = 5
+      scaleFactor = 1.1,
+      minNeighbors = 4
   )
   # None is we don't found an image
   if not len(faces) > 0:
@@ -45,25 +46,24 @@ def format_image(image):
 network = EmotionRecognition()
 network.build_network()
 
-video_capture = cv2.VideoCapture(0)
+#change file name (.mp4 files work)
+video_capture = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 feelings_faces = []
 for index, emotion in enumerate(EMOTIONS):
   feelings_faces.append(cv2.imread('./emojis/' + emotion + '.png', -1))
 
-while True:
-  # Capture frame-by-frame
-  ret, frame = video_capture.read()
+#change file name (.mp4 files work)
+cap = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
+count = 0
+data = {}
 
-  # Predict result with network
+while(cap.isOpened()):
+  ret, frame = cap.read()
   result = network.predict(format_image(frame))
+  # cv2.imshow('frame', frame)
 
-  # Draw face in frame
-  # for (x,y,w,h) in faces:
-  #   cv2.rectangle(frame, (x,y), (x+w,y+h), (255,0,0), 2)
-
-  # Write results in frame
   if result is not None:
     for index, emotion in enumerate(EMOTIONS):
       cv2.putText(frame, emotion, (10, index * 20 + 20), cv2.FONT_HERSHEY_PLAIN, 0.5, (0, 255, 0), 1);
@@ -71,17 +71,24 @@ while True:
 
     face_image = feelings_faces[result[0].tolist().index(max(result[0]))]
 
-    # Ugly transparent fix
     for c in range(0, 3):
       frame[200:320, 10:130, c] = face_image[:,:,c] * (face_image[:, :, 3] / 255.0) +  frame[200:320, 10:130, c] * (1.0 - face_image[:, :, 3] / 255.0)
 
+      if count % 100 == 0:
+        cv2.imwrite("frame_%d.jpg" % count, frame)
+        for index, emotion in enumerate(EMOTIONS):
+          data.update({"frame":count})
+          data.update({emotion:(130 + int(result[0][index] * 100))})
+          with open('results_%d.json' % count, 'w') as obj:
+            json.dump(data, obj)
+      count += 1
 
-  # Display the resulting frame
-  cv2.imshow('Video', frame)
+    #plays the video for the user to see, although the video will be gray
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    cv2.imshow('frame',gray)
 
   if cv2.waitKey(1) & 0xFF == ord('q'):
     break
 
-# When everything is done, release the capture
-video_capture.release()
+cap.release()
 cv2.destroyAllWindows()
