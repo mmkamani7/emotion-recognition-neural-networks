@@ -3,8 +3,11 @@ import cv2
 import sys
 from constants import *
 from emotion_recognition import EmotionRecognition
+from emotion_recognition import fileType, path, frames
 import numpy as np
 import json
+# import argparse
+import glob
 
 cascade_classifier = cv2.CascadeClassifier(CASC_PATH)
 
@@ -42,53 +45,101 @@ def format_image(image):
   # cv2.waitKey(0)
   return image
 
+def load_image():
+  for file in glob.glob(fileType):
+    frame = cv2.imread(file,0)
+    count = 0
+    data = {}
+
+    result = network.predict(frame)
+    # cv2.imshow('frame', frame)
+
+    if result is not None:
+      for index, emotion in enumerate(EMOTIONS):
+        cv2.putText(frame, emotion, (10, index * 20 + 20), cv2.FONT_HERSHEY_PLAIN, 0.5, (0, 255, 0), 1);
+        cv2.rectangle(frame, (130, index * 20 + 10), (130 + int(result[0][index] * 100), (index + 1) * 20 + 4), (255, 0, 0), -1)
+
+      face_image = feelings_faces[result[0].tolist().index(max(result[0]))]
+
+      # for c in range(0, 3):
+        # frame[200:320, 10:130, c] = face_image[:,:,c] * (face_image[:, :, 3] / 255.0) +  frame[200:320, 10:130, c] * (1.0 - face_image[:, :, 3] / 255.0)
+
+      cv2.imwrite("image_frame_%d.jpg" % count, frame)
+      for index, emotion in enumerate(EMOTIONS):
+        data.update({"frame":count})
+        data.update({emotion:(130 + int(result[0][index] * 100))})
+      with open('image_results.json', 'a') as obj:
+        json.dump(data, obj)
+        obj.write('\n')
+
+      #plays the video for the user to see, although the video will be gray
+      # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+      # cv2.imshow('frame',gray)
+
+def load_video():
+    #change file name (.mp4 files work)
+  for file in glob.glob(fileType + "*.mp4"):
+    cap = cv2.VideoCapture(file)
+    #cap = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
+    count = 0
+    data = {}
+
+    while(cap.isOpened()):
+      ret, frame = cap.read()
+      result = network.predict(format_image(frame))
+      # cv2.imshow('frame', frame)
+
+      if result is not None:
+        for index, emotion in enumerate(EMOTIONS):
+          cv2.putText(frame, emotion, (10, index * 20 + 20), cv2.FONT_HERSHEY_PLAIN, 0.5, (0, 255, 0), 1);
+          cv2.rectangle(frame, (130, index * 20 + 10), (130 + int(result[0][index] * 100), (index + 1) * 20 + 4), (255, 0, 0), -1)
+
+        face_image = feelings_faces[result[0].tolist().index(max(result[0]))]
+
+        for c in range(0, 3):
+          frame[200:320, 10:130, c] = face_image[:,:,c] * (face_image[:, :, 3] / 255.0) +  frame[200:320, 10:130, c] * (1.0 - face_image[:, :, 3] / 255.0)
+
+          if count % int(frames) == 0:
+            cv2.imwrite("frame_%d.jpg" % count, frame)
+            for index, emotion in enumerate(EMOTIONS):
+              data.update({"frame":count})
+              data.update({emotion:(130 + int(result[0][index] * 100))})
+            with open('results.json', 'a') as obj:
+              json.dump(data, obj)
+              obj.write('\n')
+          count += 1
+
+        #plays the video for the user to see, although the video will be gray
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cv2.imshow('frame',gray)
+
+      if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# parser = argparse.ArgumentParser(description="Input the file type, path, and frames if applicable")
+
+# parser.add_argument('fileType', help='Enter the word video or image')
+# parser.add_argument('path', help='Enter the path to the directory you want to use')
+# parser.add_argument('frames', help='For every number of frames, a frame will be saved. Enter the number you want - enter any number if you are using images instead of videos')
+
+# args = parser.parse_args()
+
 # Load Model
 network = EmotionRecognition()
 network.build_network()
 
 #change file name (.mp4 files work)
-video_capture = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
+#video_capture = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 feelings_faces = []
 for index, emotion in enumerate(EMOTIONS):
   feelings_faces.append(cv2.imread('./emojis/' + emotion + '.png', -1))
 
-#change file name (.mp4 files work)
-cap = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
-count = 0
-data = {}
-
-while(cap.isOpened()):
-  ret, frame = cap.read()
-  result = network.predict(format_image(frame))
-  # cv2.imshow('frame', frame)
-
-  if result is not None:
-    for index, emotion in enumerate(EMOTIONS):
-      cv2.putText(frame, emotion, (10, index * 20 + 20), cv2.FONT_HERSHEY_PLAIN, 0.5, (0, 255, 0), 1);
-      cv2.rectangle(frame, (130, index * 20 + 10), (130 + int(result[0][index] * 100), (index + 1) * 20 + 4), (255, 0, 0), -1)
-
-    face_image = feelings_faces[result[0].tolist().index(max(result[0]))]
-
-    for c in range(0, 3):
-      frame[200:320, 10:130, c] = face_image[:,:,c] * (face_image[:, :, 3] / 255.0) +  frame[200:320, 10:130, c] * (1.0 - face_image[:, :, 3] / 255.0)
-
-      if count % 100 == 0:
-        cv2.imwrite("frame_%d.jpg" % count, frame)
-        for index, emotion in enumerate(EMOTIONS):
-          data.update({"frame":count})
-          data.update({emotion:(130 + int(result[0][index] * 100))})
-          with open('results_%d.json' % count, 'w') as obj:
-            json.dump(data, obj)
-      count += 1
-
-    #plays the video for the user to see, although the video will be gray
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    cv2.imshow('frame',gray)
-
-  if cv2.waitKey(1) & 0xFF == ord('q'):
-    break
-
-cap.release()
-cv2.destroyAllWindows()
+if fileType == "video":
+  load_video()
+elif fileType == "image":
+  load_image()
