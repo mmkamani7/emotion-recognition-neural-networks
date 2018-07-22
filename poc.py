@@ -3,10 +3,8 @@ import cv2
 import sys
 from constants import *
 from emotion_recognition import EmotionRecognition
-from emotion_recognition import fileType, path, frames
 import numpy as np
 import json
-# import argparse
 import glob
 
 cascade_classifier = cv2.CascadeClassifier(CASC_PATH)
@@ -16,6 +14,8 @@ def brighten(data,b):
      return datab    
 
 def format_image(image):
+  if hasattr(image, 'shape') == False:
+    return None
   if len(image.shape) > 2 and image.shape[2] == 3:
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
   else:
@@ -45,10 +45,9 @@ def format_image(image):
   # cv2.waitKey(0)
   return image
 
-def load_image():
-  for file in glob.glob(fileType):
+def load_image(file):
+  #for file in glob.glob(path):
     frame = cv2.imread(file,0)
-    count = 0
     data = {}
 
     result = network.predict(frame)
@@ -64,9 +63,9 @@ def load_image():
       # for c in range(0, 3):
         # frame[200:320, 10:130, c] = face_image[:,:,c] * (face_image[:, :, 3] / 255.0) +  frame[200:320, 10:130, c] * (1.0 - face_image[:, :, 3] / 255.0)
 
-      cv2.imwrite("image_frame_%d.jpg" % count, frame)
+      cv2.imwrite("image_frame_%d.jpg" % img_num, frame)
       for index, emotion in enumerate(EMOTIONS):
-        data.update({"frame":count})
+        data.update({"frame":img_num})
         data.update({emotion:(130 + int(result[0][index] * 100))})
       with open('image_results.json', 'a') as obj:
         json.dump(data, obj)
@@ -76,9 +75,8 @@ def load_image():
       # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
       # cv2.imshow('frame',gray)
 
-def load_video():
-    #change file name (.mp4 files work)
-  for file in glob.glob(fileType + "*.mp4"):
+def load_video(file):
+  #for file in glob.glob("*.mp4"):
     cap = cv2.VideoCapture(file)
     #cap = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
     count = 0
@@ -89,6 +87,8 @@ def load_video():
       result = network.predict(format_image(frame))
       # cv2.imshow('frame', frame)
 
+      if result is None:
+        break
       if result is not None:
         for index, emotion in enumerate(EMOTIONS):
           cv2.putText(frame, emotion, (10, index * 20 + 20), cv2.FONT_HERSHEY_PLAIN, 0.5, (0, 255, 0), 1);
@@ -99,8 +99,8 @@ def load_video():
         for c in range(0, 3):
           frame[200:320, 10:130, c] = face_image[:,:,c] * (face_image[:, :, 3] / 255.0) +  frame[200:320, 10:130, c] * (1.0 - face_image[:, :, 3] / 255.0)
 
-          if count % int(frames) == 0:
-            cv2.imwrite("frame_%d.jpg" % count, frame)
+          if count % int(passed_frames) == 0:
+            cv2.imwrite("video_%d_frame_%d.jpg" % (video_num, count), frame)
             for index, emotion in enumerate(EMOTIONS):
               data.update({"frame":count})
               data.update({emotion:(130 + int(result[0][index] * 100))})
@@ -119,27 +119,28 @@ def load_video():
     cap.release()
     cv2.destroyAllWindows()
 
-# parser = argparse.ArgumentParser(description="Input the file type, path, and frames if applicable")
-
-# parser.add_argument('fileType', help='Enter the word video or image')
-# parser.add_argument('path', help='Enter the path to the directory you want to use')
-# parser.add_argument('frames', help='For every number of frames, a frame will be saved. Enter the number you want - enter any number if you are using images instead of videos')
-
-# args = parser.parse_args()
-
 # Load Model
 network = EmotionRecognition()
 network.build_network()
 
-#change file name (.mp4 files work)
-#video_capture = cv2.VideoCapture('WIN_20180308_18_33_08_Pro.mp4')
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 feelings_faces = []
 for index, emotion in enumerate(EMOTIONS):
   feelings_faces.append(cv2.imread('./emojis/' + emotion + '.png', -1))
 
+passed_frames = input("Enter a number. After the first frame, any frame whose number is a mulitiple of the number entered entered will be saved: ") #change variable name
+path = input("Enter the path to the files (The syntax should look similar to this: C:/Users/Jenny/Pictures/Camera Roll/): ")
+fileType = input("Enter the word video or the word image to describe the file: ")
+
+video_num = 0
+img_num = 0
+
 if fileType == "video":
-  load_video()
+  for file in glob.glob(path + "*.mp4"):
+    load_video(file)
+    video_num += 1
 elif fileType == "image":
-  load_image()
+  for file in glob.glob(path + "*.png"):
+    load_image(file)
+    img_num += 1

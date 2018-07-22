@@ -93,31 +93,11 @@ if __name__ == "__main__":
     show_usage()
     exit()
 
-  # parser = argparse.ArgumentParser(description="Input the file type, path, and frames if applicable")
-  # parser.add_argument('fileType', help='Enter the word video or image')
-  # parser.add_argument('path', help='Enter the path to the directory you want to use')
-  # parser.add_argument('frames', help='For every number of frames, a frame will be saved. Enter the number you want - enter any number if you are using images instead of videos')
-  # args.fileType = fileType
-  # args.path = path
-  # args.frames = frames
-  # args = parser.parse_args()
-
-  # fileType = sys.argv[2]
-  # path = sys.argv[3]
-  # frames = sys.argv[4]
-
-  # print("TEST", fileType)
-  # print("TEST", fileType)
-  # print("TEST", fileType)
-
   network = EmotionRecognition()
-  fileType = sys.argv[2]
-  path = sys.argv[3]
-  frames = sys.argv[4]
   if sys.argv[1] == 'train':
     network.start_training()
     network.save_model()
   elif sys.argv[1] == 'poc':
-    import poc
+    from poc import *
   else:
     show_usage()
